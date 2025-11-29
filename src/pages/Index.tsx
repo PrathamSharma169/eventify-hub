@@ -3,12 +3,16 @@ import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import EventCard from "@/components/EventCard";
 import { Sparkles, TrendingUp, Shield } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useEvents } from "@/hooks/useEvents";
 import eventTech from "@/assets/event-tech.jpg";
 import eventMusic from "@/assets/event-music.jpg";
 import eventBusiness from "@/assets/event-business.jpg";
 
 const Index = () => {
-  // Mock data - will be replaced with real data from backend
+  const { data: events, isLoading, error } = useEvents({ sortBy: 'date', sortOrder: 'asc' });
+  
+  // Mock data - fallback when API is not connected
   const featuredEvents = [
     {
       id: "1",
@@ -47,6 +51,15 @@ const Index = () => {
       gradient: "bg-gradient-secondary",
     },
   ];
+
+  // Use API data if available, otherwise use mock data
+  const displayEvents = events && events.length > 0 
+    ? events.slice(0, 3).map(event => ({
+        ...event,
+        image: event.image || eventTech,
+        gradient: "bg-gradient-primary"
+      }))
+    : featuredEvents;
 
   const features = [
     {
@@ -126,18 +139,38 @@ const Index = () => {
             </p>
           </motion.div>
 
+          {error && (
+            <div className="mb-6 p-4 bg-destructive/10 border border-destructive rounded-lg">
+              <p className="text-destructive text-center">
+                Failed to load events. Using sample data.
+              </p>
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredEvents.map((event, index) => (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <EventCard {...event} />
-              </motion.div>
-            ))}
+            {isLoading ? (
+              <>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-4">
+                    <Skeleton className="h-64 w-full rounded-xl" />
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ))}
+              </>
+            ) : (
+              displayEvents.map((event, index) => (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <EventCard {...event} />
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
       </section>

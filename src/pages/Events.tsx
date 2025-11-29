@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import EventCard from "@/components/EventCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useEvents } from "@/hooks/useEvents";
 import eventTech from "@/assets/event-tech.jpg";
 import eventMusic from "@/assets/event-music.jpg";
 import eventBusiness from "@/assets/event-business.jpg";
@@ -13,9 +15,15 @@ import eventBusiness from "@/assets/event-business.jpg";
 const Events = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("featured");
+  
+  const { data: events, isLoading, error } = useEvents({ 
+    search: searchTerm || undefined,
+    sortBy: sortBy === 'date' ? 'date' : sortBy === 'price-low' || sortBy === 'price-high' ? 'price' : undefined,
+    sortOrder: sortBy === 'price-high' ? 'desc' : 'asc'
+  });
 
-  // Mock data - will be replaced with real data from backend
+  // Mock data - fallback when API is not connected
   const allEvents = [
     {
       id: "1",
@@ -91,6 +99,23 @@ const Events = () => {
     },
   ];
 
+  // Filter events based on location
+  const filteredEvents = useMemo(() => {
+    const eventsToFilter = events && events.length > 0 
+      ? events.map(event => ({
+          ...event,
+          image: event.image || eventTech,
+          gradient: "bg-gradient-primary"
+        }))
+      : allEvents;
+
+    if (locationFilter === "all") return eventsToFilter;
+    
+    return eventsToFilter.filter(event => 
+      event.location.toLowerCase().includes(locationFilter.toLowerCase())
+    );
+  }, [events, locationFilter]);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -141,17 +166,6 @@ const Events = () => {
               </SelectContent>
             </Select>
 
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Date" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Dates</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="week">This Week</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
-              </SelectContent>
-            </Select>
 
             <Button variant="outline" className="md:w-auto">
               <SlidersHorizontal className="h-4 w-4 mr-2" />
@@ -164,11 +178,19 @@ const Events = () => {
       {/* Events Grid */}
       <section className="py-12">
         <div className="container mx-auto px-4">
+          {error && (
+            <div className="mb-6 p-4 bg-destructive/10 border border-destructive rounded-lg">
+              <p className="text-destructive text-center">
+                Failed to load events from server. Showing sample data.
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-between items-center mb-8">
             <p className="text-muted-foreground">
-              Showing <span className="font-semibold text-foreground">{allEvents.length}</span> events
+              Showing <span className="font-semibold text-foreground">{filteredEvents.length}</span> events
             </p>
-            <Select defaultValue="featured">
+            <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
@@ -182,7 +204,18 @@ const Events = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {allEvents.map((event, index) => (
+            {isLoading ? (
+              <>
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="space-y-4">
+                    <Skeleton className="h-64 w-full rounded-xl" />
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ))}
+              </>
+            ) : (
+              filteredEvents.map((event, index) => (
               <motion.div
                 key={event.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -191,7 +224,8 @@ const Events = () => {
               >
                 <EventCard {...event} />
               </motion.div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </section>
