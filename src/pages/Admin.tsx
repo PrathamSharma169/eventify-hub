@@ -6,28 +6,55 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Edit, Trash2, Calendar, Users, DollarSign } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useEvents } from "@/hooks/useEvents";
+import { useCreateEvent } from "@/hooks/useCreateEvent";
+import { useDeleteEvent } from "@/hooks/useDeleteEvent";
+import { CreateEventRequest } from "@/types/api";
 
 const Admin = () => {
-  const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const { data: events, isLoading, error } = useEvents();
+  const createEvent = useCreateEvent();
+  const deleteEvent = useDeleteEvent();
 
   const handleCreateEvent = (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Event Created!",
-      description: "Your event has been successfully created and published.",
+    const formData = new FormData(e.target as HTMLFormElement);
+    
+    const eventData: CreateEventRequest = {
+      title: formData.get('title') as string,
+      description: formData.get('description') as string,
+      location: formData.get('location') as string,
+      date: new Date(formData.get('date') as string).toISOString(),
+      totalSeats: parseInt(formData.get('seats') as string),
+      price: parseFloat(formData.get('price') as string),
+      image: formData.get('image') as string || undefined,
+    };
+
+    createEvent.mutate(eventData, {
+      onSuccess: () => {
+        setShowForm(false);
+        (e.target as HTMLFormElement).reset();
+      }
     });
-    setShowForm(false);
   };
 
-  // Mock data
-  const events = [
+  const handleDeleteEvent = (id: string) => {
+    if (confirm('Are you sure you want to delete this event?')) {
+      deleteEvent.mutate(id);
+    }
+  };
+
+  // Mock data fallback
+  const mockEvents = [
     { id: 1, title: "Tech Innovation Summit 2025", bookings: 350, revenue: 104650 },
     { id: 2, title: "Summer Music Festival", bookings: 955, revenue: 190045 },
     { id: 3, title: "Business Networking Gala", bookings: 100, revenue: 14900 },
   ];
+
+  const displayEvents = events && events.length > 0 ? events : mockEvents;
 
   const stats = [
     { label: "Total Events", value: "12", icon: Calendar, color: "bg-gradient-blue" },
@@ -172,43 +199,72 @@ const Admin = () => {
           transition={{ delay: 0.4 }}
         >
           <h2 className="text-2xl font-bold mb-6">Your Events</h2>
+          
+          {error && (
+            <div className="mb-6 p-4 bg-destructive/10 border border-destructive rounded-lg">
+              <p className="text-destructive">
+                Failed to load events from server. Showing sample data.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-4">
-            {events.map((event, index) => (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="p-6 hover:shadow-card transition-all duration-300">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold mb-2">{event.title}</h3>
-                      <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          {event.bookings} bookings
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="h-4 w-4" />
-                          ${event.revenue.toLocaleString()} revenue
-                        </span>
+            {isLoading ? (
+              <>
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="p-6">
+                    <Skeleton className="h-6 w-3/4 mb-4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </Card>
+                ))}
+              </>
+            ) : (
+              displayEvents.map((event, index) => (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Card className="p-6 hover:shadow-card transition-all duration-300">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold mb-2">{event.title}</h3>
+                        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {new Date(event.date).toLocaleDateString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-4 w-4" />
+                            {event.availableSeats}/{event.totalSeats} available
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <DollarSign className="h-4 w-4" />
+                            ${event.price}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm">
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleDeleteEvent(event.id)}
+                          disabled={deleteEvent.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </Button>
-                      <Button variant="destructive" size="sm">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
+                  </Card>
+                </motion.div>
+              ))
+            )}
           </div>
         </motion.div>
       </div>
