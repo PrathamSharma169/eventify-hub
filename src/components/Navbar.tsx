@@ -29,9 +29,16 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button variant="hero" size="lg" className="hidden md:flex">
-              Get Started
-            </Button>
+            <Link to="/login" className="hidden md:block">
+              <Button variant="hero" size="lg">
+                Sign In
+              </Button>
+            </Link>
+            <Link to="/register" className="hidden md:block">
+              <Button variant="gradient" size="lg">
+                Sign Up
+              </Button>
+            </Link>
             <Button variant="ghost" size="icon" className="md:hidden">
               <Menu className="h-6 w-6" />
             </Button>
