@@ -2,12 +2,14 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import EventCard from "@/components/EventCard";
+import { BookingDialog } from "@/components/BookingDialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEvents } from "@/hooks/useEvents";
+import { Event } from "@/types/api";
 import eventTech from "@/assets/event-tech.jpg";
 import eventMusic from "@/assets/event-music.jpg";
 import eventBusiness from "@/assets/event-business.jpg";
@@ -16,8 +18,10 @@ const Events = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
   const [sortBy, setSortBy] = useState("featured");
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   
-  const { data: events, isLoading, error } = useEvents({ 
+  const { data: events, isLoading, error, refetch } = useEvents({ 
     search: searchTerm || undefined,
     sortBy: sortBy === 'date' ? 'date' : sortBy === 'price-low' || sortBy === 'price-high' ? 'price' : undefined,
     sortOrder: sortBy === 'price-high' ? 'desc' : 'asc'
@@ -222,13 +226,28 @@ const Events = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                <EventCard {...event} />
+                <EventCard 
+                  {...event} 
+                  onBookNow={() => {
+                    setSelectedEvent(event);
+                    setDialogOpen(true);
+                  }}
+                />
               </motion.div>
               ))
             )}
           </div>
         </div>
       </section>
+
+      <BookingDialog
+        event={selectedEvent}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSuccess={() => {
+          refetch();
+        }}
+      />
     </div>
   );
 };
